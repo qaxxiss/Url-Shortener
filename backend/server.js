@@ -120,7 +120,7 @@ app.post("/shorten", async (req, res) => {
     await newUrl.save();
 
     res.json({
-      shortUrl: `${process.env.BASE_URL}${shortCode}`,
+      shortUrl: `${process.env.BASE_URL}/${shortCode}`,
     });
   } catch (error) {
     console.error(error);
