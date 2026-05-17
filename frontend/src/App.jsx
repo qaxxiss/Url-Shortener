@@ -18,11 +18,15 @@ function App() {
 
       setLoading(true);
 
+      const cleanedCustomCode = customCode
+        .trim()
+        .replace(/\//g, "");
+
       const res = await axios.post(
         "https://url-shortener-gx9n.onrender.com/shorten",
         {
           originalUrl: url,
-          customCode,
+          customCode: cleanedCustomCode,
         }
       );
 
