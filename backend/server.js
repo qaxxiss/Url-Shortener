@@ -10,67 +10,81 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI);
+const PORT = process.env.PORT || 5000;
 
-const UrlSchema = new mongoose.Schema({
-  originalUrl: String,
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("MongoDB Connected");
+  })
+  .catch((err) => {
+    console.log(err);
+  });
+
+const urlSchema = new mongoose.Schema({
+  originalUrl: {
+    type: String,
+    required: true,
+  },
 
   shortCode: {
     type: String,
+    required: true,
     unique: true,
   },
 
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 604800, // 7 days
+    expires: 604800,
   },
 });
 
-const Url = mongoose.model("Url", UrlSchema);
+const Url = mongoose.model("Url", urlSchema);
 
-// Reserved words users cannot use
-const reservedWords = [
+const reservedCodes = [
   "api",
   "admin",
   "login",
   "signup",
   "dashboard",
   "settings",
-  "auth",
-  "user",
-  "users",
-  "home",
-  "about",
-  "contact",
 ];
+
+app.get("/", (req, res) => {
+  res.send("URL Shortener API Running");
+});
 
 app.post("/shorten", async (req, res) => {
   try {
     let { originalUrl, customCode } = req.body;
 
-    // Automatically add https://
+    if (!originalUrl) {
+      return res
+        .status(400)
+        .json({ error: "URL is required" });
+    }
+
     if (
       !originalUrl.startsWith("http://") &&
       !originalUrl.startsWith("https://")
     ) {
-      originalUrl = "https://" + originalUrl;
+      originalUrl = `https://${originalUrl}`;
     }
 
     let shortCode;
 
-    // Custom short URL
-    if (customCode && customCode.trim() !== "") {
-      customCode = customCode.toLowerCase();
+    if (customCode) {
+      customCode = customCode.trim().toLowerCase();
 
-      // Block reserved words
-      if (reservedWords.includes(customCode)) {
+      if (
+        reservedCodes.includes(customCode)
+      ) {
         return res.status(400).json({
           error: "This custom URL is reserved",
         });
       }
 
-      // Check existing
       const existing = await Url.findOne({
         shortCode: customCode,
       });
@@ -83,16 +97,15 @@ app.post("/shorten", async (req, res) => {
 
       shortCode = customCode;
     } else {
-      // Auto-generated code
       shortCode = shortid.generate();
     }
 
-    const url = new Url({
+    const newUrl = new Url({
       originalUrl,
       shortCode,
     });
 
-    await url.save();
+    await newUrl.save();
 
     res.json({
       shortUrl: `${process.env.BASE_URL}/${shortCode}`,
@@ -106,25 +119,27 @@ app.post("/shorten", async (req, res) => {
   }
 });
 
-app.get("/:code", async (req, res) => {
+app.get("/:shortCode", async (req, res) => {
   try {
     const url = await Url.findOne({
-      shortCode: req.params.code,
+      shortCode: req.params.shortCode,
     });
 
-    if (!url) {
-      return res.status(404).send("URL not found");
+    if (url) {
+      return res.redirect(url.originalUrl);
     }
 
-    res.redirect(url.originalUrl);
+    res.status(404).json({
+      error: "URL not found",
+    });
   } catch (error) {
     console.log(error);
 
-    res.status(500).send("Server error");
+    res.status(500).json({
+      error: "Server error",
+    });
   }
 });
-
-const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
