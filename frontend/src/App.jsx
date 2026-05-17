@@ -19,7 +19,7 @@ function App() {
       setLoading(true);
 
       const res = await axios.post(
-        "http://localhost:5000/shorten",
+        "https://url-shortener-gx9n.onrender.com/shorten",
         {
           originalUrl: url,
           customCode,
