@@ -18,7 +18,7 @@ mongoose
     console.log("MongoDB Connected");
   })
   .catch((err) => {
-    console.log(err);
+    console.error(err);
   });
 
 const urlSchema = new mongoose.Schema({
@@ -60,10 +60,12 @@ app.post("/shorten", async (req, res) => {
     let { originalUrl, customCode } = req.body;
 
     if (!originalUrl) {
-      return res
-        .status(400)
-        .json({ error: "URL is required" });
+      return res.status(400).json({
+        error: "URL is required",
+      });
     }
+
+    originalUrl = originalUrl.trim();
 
     if (
       !originalUrl.startsWith("http://") &&
@@ -75,11 +77,21 @@ app.post("/shorten", async (req, res) => {
     let shortCode;
 
     if (customCode) {
-      customCode = customCode.trim().toLowerCase();
+      customCode = customCode
+        .trim()
+        .toLowerCase()
+        .replace(/\//g, "");
 
       if (
-        reservedCodes.includes(customCode)
+        !/^[a-zA-Z0-9-_]+$/.test(customCode)
       ) {
+        return res.status(400).json({
+          error:
+            "Only letters, numbers, - and _ allowed",
+        });
+      }
+
+      if (reservedCodes.includes(customCode)) {
         return res.status(400).json({
           error: "This custom URL is reserved",
         });
@@ -111,10 +123,10 @@ app.post("/shorten", async (req, res) => {
       shortUrl: `${process.env.BASE_URL}/${shortCode}`,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
 
     res.status(500).json({
-      error: "Server error",
+      error: error.message,
     });
   }
 });
@@ -129,14 +141,14 @@ app.get("/:shortCode", async (req, res) => {
       return res.redirect(url.originalUrl);
     }
 
-    res.status(404).json({
+    return res.status(404).json({
       error: "URL not found",
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
 
     res.status(500).json({
-      error: "Server error",
+      error: error.message,
     });
   }
 });
