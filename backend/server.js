@@ -95,7 +95,7 @@ app.post("/shorten", async (req, res) => {
     await url.save();
 
     res.json({
-      shortUrl: `http://localhost:5000/${shortCode}`,
+      shortUrl: `https://your-backend.onrender.com/${shortCode}`,
     });
   } catch (error) {
     console.log(error);
